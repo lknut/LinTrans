@@ -1,0 +1,2 @@
+g++-4.6 -O3 -DNDEBUG -DTRONE -DBOOST_HAS_TR1_TUPLE -fPIC -DWITH_ATLAS -DHAVE_CBLAS -I/usr/include -Wno-deprecated -I/home/db/Dokumente/lawa-phd-skestler/FLENS-lite -I/home/db/Dokumente/lawa-phd-skestler/LAWA-lite -I/home/db/Dokumente/boost_1_40_0 -L/usr/lib -L/usr/lib/atlas-base -L/home/db/Dokumente/lawa-phd-skestler/LAWA-lite waveletgalerkinoptionpricer1d.cpp   -o waveletgalerkinoptionpricer1d -llawa -lextensionsflens -llapack -lf77blas -lcblas -latlas -lgsl -lgslcblas
+

@@ -1,0 +1,131 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/1998/REC-html40-19980424/strict.dtd">
+<html>
+<head>
+<title>LAWA - Library for Adaptive Wavelet Applications</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link type="text/css" href="../default.css" rel=stylesheet>
+
+<script type="text/javascript">
+  MathJax.Hub.Config({
+     extensions: ["tex2jax.js"],
+     tex2jax: {
+         inlineMath: [ ['$','$']/*, ["\\(","\\)"]*/ ],
+         displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+         processEscapes: true
+     },
+     "HTML-CSS": { scale: 100 }
+  });
+</script>
+
+<script type="text/javascript"
+ src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+</head>
+<body>
+<script type="text/javascript" src="../wz_tooltip.js"></script>
+
+<div id="body">
+<div id="header">
+    <div id="slogan">LAWA <br> L<span class="fade">ibrary for </span>
+                               A<span class="fade">daptive </span>
+                               W<span class="fade">avelet </span>
+                               A<span class="fade">pplications </span>
+    <div id="wavelet"><img src="../../images/wavelet.png" 
+         style="float:right" height="160px" alt="wavelet.png"></div></div>
+</div>
+
+<div id="content">
+<!--<table width="100%">
+<tr>
+<td valign="top" id="leftmenu">-->
+<div id="leftmenu">
+<ul id="menu">
+<li class="subtitle">lawa</li>
+<li><a href="../index.html">home</a></li>
+<li><a href="../doc/license.html">license</a></li>
+<li><a href="../doc/roadmap.html">roadmap</a></li>
+
+<li class="subtitle">features</li>
+<li><a href="../doc/features.html">lawa features</a></li>
+<li><a href="../doc/highperformance.html">high performance</a></li>
+<li><a href="../doc/convenientusage.html">convenient usage</a></li>
+
+<li class="subtitle">using lawa</li>
+<li><a href="../doc/download.html">download</a></li>
+<li><a href="../lawa/lawa.html">documentation</a></li>
+<!--<li><a href="/doc/contributingcode.html">contributing code</a></li>-->
+<li><a href="../doc/mailinglist.html">mailing list</a></li>
+<li><a href="../doc/reportingbugs.html">reporting bugs</a></li>
+
+    <li class="subtitle">projects</li>
+    <li><a href="../doc/projects.html">based on / using lawa</a></li>
+</ul>
+<!--</td>
+<td class="main">-->
+</div><div id="main">
+
+<p >
+     <a href="applications.html">PhD thesis by S.K.</a> - <a href="finance.html">Wavelet Galerkin methods in numerical finance</a></p>
+
+<h2 class="doc">
+Wavelet Galerkin methods in numerical finance (Chapter 8)</h2>
+
+<p >
+     We describe the realization of the wavelet Galerkin schemes from Chapter 8. The most important ingredient here is the numerical computation of integrals of type</p>\[   I_{\lambda,\mu} := \int_{\mathbb{R}} \Big[ \big( \psi_\lambda(x+y) - \psi_\lambda(x) - y \partial\psi_\lambda(x)   \big) k(y) dy  \Big] \psi_{\mu}(x) dx\]<p >
+     for a L\'evy kernel \(k\) that is in our case given by</p>\[   k(x) := C \cdot \Big( \frac{e^{-M|x|}}{|x|^{1+Y}} \mathbf{1}_{\{x>0\}} + \frac{e^{-G|x|}}{|x|^{1+Y}} \mathbf{1}_{\{x<0\}} \Big)\]<p >
+     from the well-known CGMY model by Carr, Geman, Madan and Yor. In the sequel, we exclude the case where \(Y=0\) and \(Y=1\).</p><p >
+     The corresponding formulas are described in Appendix B of the PhD thesis. In the following example, these formulas are implemented and tested.</p><ul class="itemize">
+    <li>
+        <p >
+             <a href="finance/doc/test_cgmy_matrixentry.html">Computing stiffness matrix entries in the CGMY model</a>: <tt>applications/finance/test_cgmy_matrixentry.cpp</tt>        </p>    </li>
+</ul>
+<p >
+     An important remark before we come to program that actually realize the computation of option prices: Our focus was on the measurement of convergence and none of the algorithms claims that is implemented in view of high performance. When going through the implementation, you will surely recognize possibilities for quantitative improvements which, unfortunately, could not be realized within this thesis due to lack of time. One particular point is that within each program, we use an instance of an AWGM solver class. However, by using a certain parameter, only one step of the AWGM will be performed on a fixed index set which is, in most cases, a sparse grid index set.</p><p >
+     Please do also note that within the above mentioned AWGM solver class, we have two routines for solving linear systems, namely cg and bi-cg. For problems in finance, we only use the last one for the following reason: The implementation of the \(\theta\)-scheme requires to compute the propagation of the solution of the last time-step to the current time-step for the set up of a right-hand side vector (see, e.g., Eq. (8.71)). However, this collides with our implementation of the multitree AWGM from Chapter 7 (elliptic problem). Therefore, we use this workaround (you will also notice that within cgsolve() in the multitreeawgm.tcc, there is a function F.initializePropagation(u) that is not active (in comments)).</p><p >
+     The discretization of the CGMY operator can then used directly to price European options via a Galerkin approach. This is described in Details in Section 8.5. The implementation is given in the program below. Please take into account that the implementation of these formulas is for the reference domain \([0,1]\).</p><ul class="itemize">
+    <li>
+        <p >
+             <a href="finance/doc/waveletgalerkinoptionpricing1d.html">Wavelet Galerkin option pricing in the 1d CGMY model</a>: <tt>applications/finance/waveletgalerkinoptionpricer1d.cpp</tt>        </p>    </li>
+</ul>
+<p >
+     In order to realize the results for the convergence of a sparse grid scheme applied to the two-dimensional Black-Scholes problem (Sections 8.6.1 and 8.6.2), we have the following program:</p><ul class="itemize">
+    <li>
+        <p >
+             <a href="finance/doc/sparsegridbs2d.html">Sparse grid discretization of the two-dimensional Black-Scholes problem</a>: <tt>applications/finance/bs2d_multitree_mw_sg.cpp</tt>        </p>    </li>
+</ul>
+<p >
+     The results concerning the benefit of the spatially adaptive (sparse grid based) discretization of the two-dimensional Black-Scholes problem are described in Section 8.6.3. Here, we have the following problem realizing this strategy:</p><ul class="itemize">
+    <li>
+        <p >
+             <a href="finance/doc/adaptivebs2d.html">Adaptive discretization of the two-dimensional Black-Scholes problem</a>: <tt>applications/finance/bs2d_multitree_mw_awgm.cpp</tt>        </p>    </li>
+</ul>
+<p >
+     In Section 8.6, the discretization of a two-dimensional CGMY problem is discussed. For the discretization of this problem by a sparse grid approach, we have the following program that can also be used to realize the numerical experiments reported in Section 8.7.2:</p><ul class="itemize">
+    <li>
+        <p >
+             <a href="finance/doc/sparsegridcgmye2d.html">Sparse grid discretization of the two-dimensional CGMY problem</a>: <tt>applications/finance/cgmye2d_multitree_mw_sg.cpp</tt>        </p>    </li>
+</ul>
+<p >
+     The examples from Section 8.7.2 were then extended in Section 8.7.3 in order to realize the truncated payoff approach:</p><ul class="itemize">
+    <li>
+        <p >
+             <a href="finance/doc/adaptivecgmye2d.html">Adaptive discretization of the two-dimensional CGMY problem</a>: <tt>applications/finance/cgmye2d_multitree_mw_awgm.cpp</tt>        </p>    </li>
+</ul>
+<!--
+</td>
+</tr>
+</table>
+-->
+</div>
+
+</div>
+<div id="page_footer"></div>
+</div>
+
+<div id="footer">
+Copyright &copy; 2011 <a href="http://lawa.sf.net">Alexander Stippler</a>
+</div>
+</body>
+</html>

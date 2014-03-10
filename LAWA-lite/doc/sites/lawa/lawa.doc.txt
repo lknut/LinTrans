@@ -1,0 +1,25 @@
+================
+The main library
+================
+
+:document:  lawa::documentation
+
+LAWA mainly consists of two parts: _basis constructions_ and _adaptive wavelet algorithms_.
+This first release of LAWA covers large parts of the first, but at the moment does not really
+provide very much of the second topic.
+
+The documentation will mainly be given in tutorial form to provide a simple entry point. At
+the moment a simple uniform example for 1D and 2D is provided to demonstrate the usage of
+B-splines, wavelets and bases as well as integral calculations. This documentation will 
+steadily grow and bit by bit we will add adaptive stuff soon.
+
+Tutorials
+---------
+
+- _Tutorial 1_:  __Plotting scaling functions and wavelets__
+- _Tutorial 2_:  __Wavelet integrals__
+- _Tutorial 3_:  __Poisson equation in 1D__
+
+:links: Plotting scaling functions and wavelets -> tutorials::examples::plotwavelets
+        Wavelet integrals -> tutorials::examples::waveletintegrals
+        Poisson equation in 1D -> tutorials::examples::poisson1d

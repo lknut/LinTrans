@@ -1,0 +1,378 @@
+// (c) J. Poirot and P. Tankov, June-September 2006 
+// Permission granted to redistribute and modify this code if the above copyright notice remains intact 
+// Direct all questions concerning this code to tankov@math.jussieu.fr 
+ 
+ 
+// Simulation of the CGMY process with Levy measure truncated at level eps  
+// (jumps smaller than eps in absolute value are replaced with their mean) 
+// Uses the algorithm in Madan and Yor (), see also Poirot and Tankov (2006) 
+// The Levy measure of CGMY process is  
+// C exp(-M x) / x^{1+Y} 1_{x>0} + C exp(-G |x|) / |x|^{1+Y} 1_{x<0} 
+// the gamma parameter of the Levy triplet is chosen in such way that 
+// the mean of X_1 is equal to C gamma(1-Y) (M^{Y-1}-G^{Y-1}) 
+// this is the natural 'zero drift' version of the process  
+// corresponding to using a subordinator without drift 
+
+//LK which drift is meant? gamma_0, gamma_c, or gamma?
+
+#ifndef _CGMYSIM 
+#define _CGMYSIM 
+ 
+class CGMYSimulator{ 
+	const double C, G, M, Y; 
+	const double eps; 
+	double A, B, d, lambda, P; 
+public: 
+	CGMYSimulator(double _C, double _G, double _M, double _Y, double _eps); 
+	double sim(double t); // simulate a t-increment of the truncated CGMY process
+	double simZeroCenter(double t);  //LK: simulates a t-increment of the truncated CGMY process with Zero center!
+	
+	// returns the increment value 
+	bool simtojump(double & t, double & before, double & after); // simulate the (truncated) CGMY process 
+	// up to the first jump or up to time t, if the jump arrives after t 
+	// on entry, t contains the time step 
+	// returns true if the jump arrives after t and false otherwise 
+	// if true is returned, before contains the increment value 
+	// if false is returned, t contains the jump moment, before contains the process value before the jump 
+	// and after contains the process value after the jump 
+	double cumulant(int n); 
+	// returns the n-th cumulant of X_1 (computed theoretically): 
+	// cumulant(1) corresponds to the mean, cumulant(2) to the variance etc.
+	double theoreticalMean;
+
+ 
+
+
+	const double Pi=3.141592653589793;   
+	double Uniform ()   
+	{
+		return (double) rand() /RAND_MAX;   
+	}   
+       
+       
+	double StandardGaussian()   
+	{   
+		static bool haveVar = false;   
+		static double var;   
+		if(haveVar) {   
+			haveVar = false;   
+			return var;   
+		}   
+		double u, v;   
+		u=Uniform();   
+		v=Uniform();   
+		var=sqrt(-2*log(u))*cos(2*Pi*v);   
+		haveVar = true;   
+		return sqrt(-2*log(u))*sin(2*Pi*v);   
+	}   
+       
+       
+	double gammLN(double xx) {   
+		// Returns lnG(xx)   
+		// Lanczos formula from Numerical Recipes in C   
+		double x,y,tmp,ser;   
+		const double coef[6]={76.18009172947146,-86.50532032941677,   
+							  24.01409824083091,-1.231739572450155,   
+							  0.1208650973866179e-2,-0.5395239384953e-5};   
+		int j;   
+		y=x=xx;   
+		tmp=x+5.5;   
+		tmp -= (x+0.5)*std::log(tmp);   
+		ser=1.000000000190015;   
+		for (j=0;j<=5;j++) ser += coef[j]/++y;   
+		return -tmp+std::log(2.5066282746310005*ser/x);   
+	}   
+       
+	inline double implemented_gamma(double x) {return std::exp(gammLN(x));} // gamma function   
+       
+	class InfExcept{};   
+       
+	double DegHypergeometric1(double a, double b, double z)   
+	{   
+		int i=0;   
+		double H=1;   
+		double c=1;   
+		while(fabs(c)>0.00000001)   
+			{   
+				c *= ((a+i)/(b+i))*z/(i+1);   
+				if(fabs(c)>1e20) throw InfExcept();   
+				H+=c;   
+				i++;   
+				if(i>300) {   
+					//          std::cout << "Maximum iteration number reached in DegHypergeometric with z="<<z<<"; H="<<H<<std::endl;   
+					break;   
+				}   
+			}   
+       
+		return H;   
+	}   
+       
+	double ParCylFunction1 (double p, double z)   
+	{     
+             
+		int i;   
+		double u,v;   
+		double S=1, c=1;   
+		double g=implemented_gamma(-p/2+0.5);   
+		double h=implemented_gamma(-p/2);   
+		double d;   
+		if(z<40)   
+			{   
+				u= DegHypergeometric1(-p/2,0.5,z*z/2);   
+				v= DegHypergeometric1(0.5-p/2,1.5,z*z/2);   
+				d=pow(2,p/2)*exp(-z*z/4)*((sqrt(Pi)*u/g)-sqrt(2*Pi)*z*v/h);   
+				return d;   
+			}   
+		else{   
+			for (i=1;i<20;i++)   
+				{    
+					c*= -(p-i+1)*(p-i)/(2*i*pow(z,2*i));   
+					S+=c;}   
+                
+			return exp(-z*z/4)*pow(z,p)*S;}   
+            
+	}   
+       
+       
+            
+	double IntegralI(double Y,double a, double lambda)   
+	{   
+		double val;   
+		val= pow(2*lambda, (-Y)/2)*implemented_gamma(Y)*exp(a*a/(8*lambda))*ParCylFunction1(-Y, (a/sqrt(2*lambda)));   
+           
+		return val;   
+	}   
+       
+	double h(double y, double Y, double A,double B)   
+	{   
+		double val1;   
+		val1=(exp((A*A-B*B)*y/2)*implemented_gamma((Y+1)/2)*pow(2,Y)*pow(B*B*y/2,Y/2)*IntegralI(Y,B*B*y,B*B*y/2))/(implemented_gamma(Y)*implemented_gamma(0.5));   
+		return val1;   
+	}
+
+
+ 
+
+
+	const double Pi=3.141592653589793;   
+	double Uniform ()   
+	{
+		return (double) rand() /RAND_MAX;   
+	}   
+       
+       
+	double StandardGaussian()   
+	{   
+		static bool haveVar = false;   
+		static double var;   
+		if(haveVar) {   
+			haveVar = false;   
+			return var;   
+		}   
+		double u, v;   
+		u=Uniform();   
+		v=Uniform();   
+		var=sqrt(-2*log(u))*cos(2*Pi*v);   
+		haveVar = true;   
+		return sqrt(-2*log(u))*sin(2*Pi*v);   
+	}   
+       
+       
+	double gammLN(double xx) {   
+		// Returns lnG(xx)   
+		// Lanczos formula from Numerical Recipes in C   
+		double x,y,tmp,ser;   
+		const double coef[6]={76.18009172947146,-86.50532032941677,   
+							  24.01409824083091,-1.231739572450155,   
+							  0.1208650973866179e-2,-0.5395239384953e-5};   
+		int j;   
+		y=x=xx;   
+		tmp=x+5.5;   
+		tmp -= (x+0.5)*std::log(tmp);   
+		ser=1.000000000190015;   
+		for (j=0;j<=5;j++) ser += coef[j]/++y;   
+		return -tmp+std::log(2.5066282746310005*ser/x);   
+	}   
+       
+	inline double implemented_gamma(double x) {return std::exp(gammLN(x));} // gamma function   
+       
+	class InfExcept{};   
+       
+	double DegHypergeometric1(double a, double b, double z)   
+	{   
+		int i=0;   
+		double H=1;   
+		double c=1;   
+		while(fabs(c)>0.00000001)   
+			{   
+				c *= ((a+i)/(b+i))*z/(i+1);   
+				if(fabs(c)>1e20) throw InfExcept();   
+				H+=c;   
+				i++;   
+				if(i>300) {   
+					//          std::cout << "Maximum iteration number reached in DegHypergeometric with z="<<z<<"; H="<<H<<std::endl;   
+					break;   
+				}   
+			}   
+       
+		return H;   
+	}   
+       
+	double ParCylFunction1 (double p, double z)   
+	{     
+             
+		int i;   
+		double u,v;   
+		double S=1, c=1;   
+		double g=implemented_gamma(-p/2+0.5);   
+		double h=implemented_gamma(-p/2);   
+		double d;   
+		if(z<40)   
+			{   
+				u= DegHypergeometric1(-p/2,0.5,z*z/2);   
+				v= DegHypergeometric1(0.5-p/2,1.5,z*z/2);   
+				d=pow(2,p/2)*exp(-z*z/4)*((sqrt(Pi)*u/g)-sqrt(2*Pi)*z*v/h);   
+				return d;   
+			}   
+		else{   
+			for (i=1;i<20;i++)   
+				{    
+					c*= -(p-i+1)*(p-i)/(2*i*pow(z,2*i));   
+					S+=c;}   
+                
+			return exp(-z*z/4)*pow(z,p)*S;}   
+            
+	}   
+       
+       
+            
+	double IntegralI(double Y,double a, double lambda)   
+	{   
+		double val;   
+		val= pow(2*lambda, (-Y)/2)*implemented_gamma(Y)*exp(a*a/(8*lambda))*ParCylFunction1(-Y, (a/sqrt(2*lambda)));   
+           
+		return val;   
+	}   
+       
+	double h(double y, double Y, double A,double B)   
+	{   
+		double val1;   
+		val1=(exp((A*A-B*B)*y/2)*implemented_gamma((Y+1)/2)*pow(2,Y)*pow(B*B*y/2,Y/2)*IntegralI(Y,B*B*y,B*B*y/2))/(implemented_gamma(Y)*implemented_gamma(0.5));   
+		return val1;   
+	}
+
+
+ 
+
+
+	const double Pi=3.141592653589793;   
+	double Uniform ()   
+	{
+		return (double) rand() /RAND_MAX;   
+	}   
+       
+       
+	double StandardGaussian()   
+	{   
+		static bool haveVar = false;   
+		static double var;   
+		if(haveVar) {   
+			haveVar = false;   
+			return var;   
+		}   
+		double u, v;   
+		u=Uniform();   
+		v=Uniform();   
+		var=sqrt(-2*log(u))*cos(2*Pi*v);   
+		haveVar = true;   
+		return sqrt(-2*log(u))*sin(2*Pi*v);   
+	}   
+       
+       
+	double gammLN(double xx) {   
+		// Returns lnG(xx)   
+		// Lanczos formula from Numerical Recipes in C   
+		double x,y,tmp,ser;   
+		const double coef[6]={76.18009172947146,-86.50532032941677,   
+							  24.01409824083091,-1.231739572450155,   
+							  0.1208650973866179e-2,-0.5395239384953e-5};   
+		int j;   
+		y=x=xx;   
+		tmp=x+5.5;   
+		tmp -= (x+0.5)*std::log(tmp);   
+		ser=1.000000000190015;   
+		for (j=0;j<=5;j++) ser += coef[j]/++y;   
+		return -tmp+std::log(2.5066282746310005*ser/x);   
+	}   
+       
+	inline double implemented_gamma(double x) {return std::exp(gammLN(x));} // gamma function   
+       
+	class InfExcept{};   
+       
+	double DegHypergeometric1(double a, double b, double z)   
+	{   
+		int i=0;   
+		double H=1;   
+		double c=1;   
+		while(fabs(c)>0.00000001)   
+			{   
+				c *= ((a+i)/(b+i))*z/(i+1);   
+				if(fabs(c)>1e20) throw InfExcept();   
+				H+=c;   
+				i++;   
+				if(i>300) {   
+					//          std::cout << "Maximum iteration number reached in DegHypergeometric with z="<<z<<"; H="<<H<<std::endl;   
+					break;   
+				}   
+			}   
+       
+		return H;   
+	}   
+       
+	double ParCylFunction1 (double p, double z)   
+	{     
+             
+		int i;   
+		double u,v;   
+		double S=1, c=1;   
+		double g=implemented_gamma(-p/2+0.5);   
+		double h=implemented_gamma(-p/2);   
+		double d;   
+		if(z<40)   
+			{   
+				u= DegHypergeometric1(-p/2,0.5,z*z/2);   
+				v= DegHypergeometric1(0.5-p/2,1.5,z*z/2);   
+				d=pow(2,p/2)*exp(-z*z/4)*((sqrt(Pi)*u/g)-sqrt(2*Pi)*z*v/h);   
+				return d;   
+			}   
+		else{   
+			for (i=1;i<20;i++)   
+				{    
+					c*= -(p-i+1)*(p-i)/(2*i*pow(z,2*i));   
+					S+=c;}   
+                
+			return exp(-z*z/4)*pow(z,p)*S;}   
+            
+	}   
+       
+       
+            
+	double IntegralI(double Y,double a, double lambda)   
+	{   
+		double val;   
+		val= pow(2*lambda, (-Y)/2)*implemented_gamma(Y)*exp(a*a/(8*lambda))*ParCylFunction1(-Y, (a/sqrt(2*lambda)));   
+           
+		return val;   
+	}   
+       
+	double h(double y, double Y, double A,double B)   
+	{   
+		double val1;   
+		val1=(exp((A*A-B*B)*y/2)*implemented_gamma((Y+1)/2)*pow(2,Y)*pow(B*B*y/2,Y/2)*IntegralI(Y,B*B*y,B*B*y/2))/(implemented_gamma(Y)*implemented_gamma(0.5));   
+		return val1;   
+	}
+
+
+};
+	
+#endif 
